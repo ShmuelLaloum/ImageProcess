@@ -8,6 +8,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Random;
 
 public class FiltersPage extends JPanel {
@@ -15,10 +16,6 @@ public class FiltersPage extends JPanel {
     public static final ImageIcon background = ImageManager.getImageIcon(ImageManager.ImageName.FILTER_BACKGROUND);
     private BufferedImage originalPic;
     private BufferedImage drawPic;
-    private boolean markingPoints = false;
-    private Point[] markedPoints = new Point[4];
-    private int markedCount = 0;
-
     public FiltersPage(String path , window window) {
         this.window = window;
         try {
@@ -197,148 +194,50 @@ public class FiltersPage extends JPanel {
             repaint();
         });
         this.add(darker);
-
-        this.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (markingPoints) {
-                    if (markedCount < 4) {
-                        markedPoints[markedCount] = e.getPoint();
-                        markedCount++;
-                        if (markedCount == 4) {
-                            // Draw square on image
-                            drawSquareOnImage();
-                        }
-                        repaint();
-                    }
-                }
-            }
-        });
-
-        JButton markPointsButton = new JButton("Mark Points");
-        markPointsButton.setBounds(300, 530, 120, 40);
-        markPointsButton.addActionListener(e -> {
-            markingPoints = true;
-            markedCount = 0;
-            repaint();
-        });
-        this.add(markPointsButton);
-
-        JButton clearPointsButton = new JButton("Clear Points");
-        clearPointsButton.setBounds(500, 530, 120, 40);
-        clearPointsButton.addActionListener(e -> {
-            markingPoints = false;
-            markedCount = 0;
-            repaint();
-        });
-        this.add(clearPointsButton);
-    }
-
-    private void drawSquareOnImage() {
-        Graphics2D g = drawPic.createGraphics();
-        g.setColor(Color.RED); // Example: Use a different color for clarity
-        for (int i = 0; i < 3; i++) {
-            g.drawLine(markedPoints[i].x, markedPoints[i].y, markedPoints[i + 1].x, markedPoints[i + 1].y);
-        }
-        g.drawLine(markedPoints[3].x, markedPoints[3].y, markedPoints[0].x, markedPoints[0].y);
-        g.dispose();
     }
     private void Vintage(int noiseIntensity) {
-        if (markedCount == 4) {
-            int minX = Math.min(markedPoints[0].x, Math.min(markedPoints[1].x, Math.min(markedPoints[2].x, markedPoints[3].x)));
-            int minY = Math.min(markedPoints[0].y, Math.min(markedPoints[1].y, Math.min(markedPoints[2].y, markedPoints[3].y)));
-            int maxX = Math.max(markedPoints[0].x, Math.max(markedPoints[1].x, Math.max(markedPoints[2].x, markedPoints[3].x)));
-            int maxY = Math.max(markedPoints[0].y, Math.max(markedPoints[1].y, Math.max(markedPoints[2].y, markedPoints[3].y)));
+        int width = drawPic.getWidth();
+        int height = drawPic.getHeight();
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = originalPic.getRGB(x, y);
+                Color color = new Color(rgb);
 
-            for (int i = minY; i < maxY; i++) {
-                for (int j = minX; j < maxX; j++) {
+                int r = color.getRed();
+                int g = color.getGreen();
+                int b = color.getBlue();
 
-                    int rgb = originalPic.getRGB(j, i);
-                    Color color = new Color(rgb);
+                int tr = (int) (0.393 * r + 0.769 * g + 0.189 * b);
+                int tg = (int) (0.349 * r + 0.686 * g + 0.168 * b);
+                int tb = (int) (0.272 * r + 0.534 * g + 0.131 * b);
 
-                    int r = color.getRed();
-                    int g = color.getGreen();
-                    int b = color.getBlue();
+                tr = Math.min(255, tr);
+                tg = Math.min(255, tg);
+                tb = Math.min(255, tb);
 
-                    int tr = (int) (0.393 * r + 0.769 * g + 0.189 * b);
-                    int tg = (int) (0.349 * r + 0.686 * g + 0.168 * b);
-                    int tb = (int) (0.272 * r + 0.534 * g + 0.131 * b);
+                int newR = (int) (0.8 * tr + 0.2 * r);
+                int newG = (int) (0.8 * tg + 0.2 * g);
+                int newB = (int) (0.8 * tb + 0.2 * b);
 
-                    tr = Math.min(255, tr);
-                    tg = Math.min(255, tg);
-                    tb = Math.min(255, tb);
+                Random random = new Random();
+                int noise = random.nextInt(noiseIntensity + 1);
+                newR = Math.min(Math.max(newR + noise, 0), 255);
+                newG = Math.min(Math.max(newG + noise, 0), 255);
+                newB = Math.min(Math.max(newB + noise, 0), 255);
 
-                    int newR = (int) (0.8 * tr + 0.2 * r);
-                    int newG = (int) (0.8 * tg + 0.2 * g);
-                    int newB = (int) (0.8 * tb + 0.2 * b);
+                Color sepiaNoiseColor = new Color(newR, newG, newB);
 
-                    Random random = new Random();
-                    int noise = random.nextInt(noiseIntensity + 1);
-                    newR = Math.min(Math.max(newR + noise, 0), 255);
-                    newG = Math.min(Math.max(newG + noise, 0), 255);
-                    newB = Math.min(Math.max(newB + noise, 0), 255);
+                int vintageR = (int) (0.6 * sepiaNoiseColor.getRed() + 0.4 * sepiaNoiseColor.getRed());
+                int vintageG = (int) (0.6 * sepiaNoiseColor.getGreen() + 0.4 * sepiaNoiseColor.getGreen());
+                int vintageB = (int) (0.6 * sepiaNoiseColor.getBlue() + 0.4 * sepiaNoiseColor.getBlue());
 
-                    Color sepiaNoiseColor = new Color(newR, newG, newB);
+                vintageR = Math.min(255, vintageR);
+                vintageG = Math.min(255, vintageG);
+                vintageB = Math.min(255, vintageB);
 
-                    int vintageR = (int) (0.6 * sepiaNoiseColor.getRed() + 0.4 * sepiaNoiseColor.getRed());
-                    int vintageG = (int) (0.6 * sepiaNoiseColor.getGreen() + 0.4 * sepiaNoiseColor.getGreen());
-                    int vintageB = (int) (0.6 * sepiaNoiseColor.getBlue() + 0.4 * sepiaNoiseColor.getBlue());
+                Color vintageColor = new Color(vintageR, vintageG, vintageB);
 
-                    vintageR = Math.min(255, vintageR);
-                    vintageG = Math.min(255, vintageG);
-                    vintageB = Math.min(255, vintageB);
-
-                    Color vintageColor = new Color(vintageR, vintageG, vintageB);
-
-                    drawPic.setRGB(i, j, vintageColor.getRGB());
-                }
-            }
-        }else {
-            int width = drawPic.getWidth();
-            int height = drawPic.getHeight();
-
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-
-                    int rgb = originalPic.getRGB(x, y);
-                    Color color = new Color(rgb);
-
-                    int r = color.getRed();
-                    int g = color.getGreen();
-                    int b = color.getBlue();
-
-                    int tr = (int) (0.393 * r + 0.769 * g + 0.189 * b);
-                    int tg = (int) (0.349 * r + 0.686 * g + 0.168 * b);
-                    int tb = (int) (0.272 * r + 0.534 * g + 0.131 * b);
-
-                    tr = Math.min(255, tr);
-                    tg = Math.min(255, tg);
-                    tb = Math.min(255, tb);
-
-                    int newR = (int) (0.8 * tr + 0.2 * r);
-                    int newG = (int) (0.8 * tg + 0.2 * g);
-                    int newB = (int) (0.8 * tb + 0.2 * b);
-
-                    Random random = new Random();
-                    int noise = random.nextInt(noiseIntensity + 1);
-                    newR = Math.min(Math.max(newR + noise, 0), 255);
-                    newG = Math.min(Math.max(newG + noise, 0), 255);
-                    newB = Math.min(Math.max(newB + noise, 0), 255);
-
-                    Color sepiaNoiseColor = new Color(newR, newG, newB);
-
-                    int vintageR = (int) (0.6 * sepiaNoiseColor.getRed() + 0.4 * sepiaNoiseColor.getRed());
-                    int vintageG = (int) (0.6 * sepiaNoiseColor.getGreen() + 0.4 * sepiaNoiseColor.getGreen());
-                    int vintageB = (int) (0.6 * sepiaNoiseColor.getBlue() + 0.4 * sepiaNoiseColor.getBlue());
-
-                    vintageR = Math.min(255, vintageR);
-                    vintageG = Math.min(255, vintageG);
-                    vintageB = Math.min(255, vintageB);
-
-                    Color vintageColor = new Color(vintageR, vintageG, vintageB);
-
-                    drawPic.setRGB(x, y, vintageColor.getRGB());
-                }
+                drawPic.setRGB(x, y, vintageColor.getRGB());
             }
         }
     }
@@ -618,9 +517,6 @@ public class FiltersPage extends JPanel {
             }
         }
     }
-
-
-
     private void Posterize() {
         int width = drawPic.getWidth();
         int height = drawPic.getHeight();
@@ -679,14 +575,10 @@ public class FiltersPage extends JPanel {
         window.repaint();
         newPanel.requestFocusInWindow();
     }
-    public void paintComponent(Graphics graphics) {
-        super.paintComponent(graphics);
-        graphics.drawImage(background.getImage(), -70, 0, 1650, 870, this);
-        if (drawPic != null) {
-            graphics.drawImage(drawPic, 319, 58, 875, 427, this);
-        } else {
-            System.out.println("Error: Image is not loaded");
-        }
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        g.drawImage(background.getImage(), 0, 0, this.getWidth(), this.getHeight(), this);
+        g.drawImage(drawPic, 363, 55, 817, 416, null);
     }
     private void resetFilters() {
         if (originalPic != null) {
@@ -696,10 +588,5 @@ public class FiltersPage extends JPanel {
         } else {
             System.out.println("Error: Original image is not loaded");
         }
-    }
-    private void resetPoints() {
-        markedCount = 0;
-        markingPoints = false;
-        repaint();
     }
 }
